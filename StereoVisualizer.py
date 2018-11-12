@@ -2,7 +2,8 @@ import pyaudio
 import numpy as np
 import opc
 
-numLEDs = 20
+numLEDs = 64
+clear_max = 0
 client = opc.Client('localhost:7890')
 pixels = [(0, 0, 0)] * numLEDs
 g_percent = 0.0  # %
@@ -37,7 +38,7 @@ def get_vu_data():
                     input=True,
                     frames_per_buffer=1024)
     while True:
-        data = np.fromstring(stream.read(1024), dtype=np.int16)
+        data = np.frombuffer(stream.read(1024), dtype=np.int16)
         dataL = data[0::2]
         Lmax = np.max(dataL)
         Lmin = np.min(dataL)
@@ -56,11 +57,12 @@ def get_vu_data():
             right_fade = 0
         else:
             right_fade += 1
-        lString = build_line(int(peakL*bars), int(left_limit*bars))
-        led_bar(int(peakL*bars), int(left_limit*bars), left_fade)
-        rString = build_line(int(peakR*bars), int(right_limit*bars))
-        led_bar(int(peakR*bars), int(right_limit*bars), right_fade)
-        print("L=[%s]\tR=[%s]" % (lString, rString))
+        # lString = build_line(int(peakL*bars), int(left_limit*bars))
+        max_bars = 20
+        led_bar(0, max_bars, int(peakL*bars), left_fade, True)
+        # rString = build_line(int(peakR*bars), int(right_limit*bars))
+        led_bar(numLEDs - 1, max_bars, int(peakR*bars), right_fade, False)
+        # print("L=[%s]\tR=[%s]" % (lString, rString))
 
 
 def build_line(vu_level, max_level):
@@ -108,8 +110,8 @@ def build_line(vu_level, max_level):
     return bar_print
 
 
-def led_bar(vu_level, max_level, fade_value):
-    all_lights_off()
+def led_bar(start_pos, max_level, vu_level, fade_value, forward):
+    # all_lights_off()
     g_start = 0
     if max_level > 1:
         y_start = int(y_percent * max_level)
@@ -130,8 +132,10 @@ def led_bar(vu_level, max_level, fade_value):
         y_length = 0
         r_length = 0
     for g_led in range(g_length):
-        led_on(g_start + g_led, 0, max_brightness, 0)
-
+        if forward:
+            led_on(start_pos + g_start + g_led, 0, max_brightness, 0)
+        else:
+            led_on(start_pos - (g_start + g_led), 0, max_brightness, 0)
     if vu_level > r_start:
         y_length = int(r_start - y_start)
     else:
@@ -141,19 +145,24 @@ def led_bar(vu_level, max_level, fade_value):
             y_length = 0
         r_length = 0
     for y_led in range(y_length):
-        led_on(y_start + y_led, max_brightness, max_brightness, 0)
-
+        if forward:
+            led_on(start_pos + (y_start + y_led), max_brightness, max_brightness, 0)
+        else:
+            led_on(start_pos - (y_start + y_led), max_brightness, max_brightness, 0)
     if vu_level > r_start:
         r_length = int(vu_level - r_start)
     else:
         r_length = 0
     for r_led in range(r_length):
-        led_on(r_start + r_led, max_brightness, 0, 0)
+        if forward:
+            led_on(start_pos + (r_start + r_led), max_brightness, 0, 0)
+        else:
+            led_on(start_pos - (r_start + r_led), max_brightness, 0, 0)
 
     fade_intensity = 255-(int((fade_value / fade_delay) * max_brightness))
-    bar_len = g_length + y_length + r_length
-    peak_length = max_level - bar_len
-    led_on(peak_length + 1, fade_intensity, fade_intensity, fade_intensity)
-
+    clear_count = vu_level
+    while clear_count < numLEDs:
+        led_on(clear_count, 0, 0, 0)
+        clear_count = clear_count + 1
 
 get_vu_data()
