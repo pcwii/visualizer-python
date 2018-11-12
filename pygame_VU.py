@@ -19,6 +19,7 @@ pixels = [(0, 0, 0)] * numLEDs
 brightness = 255
 y_pos = 20
 r_pos = 30
+fade_value = 0.023
 
 def led_on(led_index, Red, Green, Blue):
     # all_lights_off()
@@ -70,7 +71,7 @@ while True:  # main application loop
         brightness = 255
     elif PeakL > 0:
         PeakL = PeakL - 0.2
-        brightness = brightness - (brightness * 0.023)
+        brightness = brightness - (brightness * fade_value )
     if LevelR > PeakR:
         PeakR = LevelR
     elif PeakR > 0:
