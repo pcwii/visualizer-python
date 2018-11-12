@@ -37,6 +37,7 @@ def get_vu_data():
                     rate=44100,
                     input=True,
                     frames_per_buffer=1024)
+                    #as_loopback=True)
     while True:
         data = np.frombuffer(stream.read(1024), dtype=np.int16)
         dataL = data[0::2]
